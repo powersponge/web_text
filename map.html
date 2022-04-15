@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="ko">
+
+  <head>
+    
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="stylesheet" href="//stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"/>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+
+    <title>모두의 재활</title>
+    <script src="https://code.jquery.com/jquery-latest.min.js"></script>
+
+    <link rel="stylesheet" href="https://unpkg.com/aos@2.3.1/dist/aos.css" />
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+
+
+    {% comment %} 지도 스타일 {% endcomment %}
+    <style>
+        .map_wrap, .map_wrap * {overflow-x:visible; margin:0;padding:0;font-family:'Malgun Gothic',dotum,'돋움',sans-serif;font-size:15px;z-index: 1}
+        .map_wrap a, .map_wrap a:hover, .map_wrap a:active{color:#000;text-decoration: none;}
+        .map_wrap { position:relative;width:100%;height:800px;}
+        #menu_wrap {position:absolute;top:0;left:0;bottom:0;width:320px; height:660px; margin:10px 0 30px 10px;padding:10px; overflow-y:auto; background:rgba(255, 255, 255, 0.8);z-index: 2;font-size:15px;border-radius: 10px;}
+        .bg_white {background:#fff;}
+        #menu_wrap hr {display: block; height: 1px;border: 0; border-top: 2px solid #101010;margin:3px 0; border-color: inherit; color:black;}
+        #menu_wrap .option{text-align: center;} 
+        #menu_wrap .option button {margin-left:5px;}
+        #placesList li { list-style: none;}
+        #placesList { cursor: pointer;min-height: 65px;}
+        #placesList span {display: block;margin-top:4px;}
+        #placesList h5, #placesList .info {text-overflow: ellipsis; white-space: normal;}
+        #placesList .info{ position:relative;padding:10px 0 10px 10px;}
+        #placesList .gray {color:#8a8a8a;}
+        #placesList .info .tel {color:#009900;}
+        .city:hover{color:#0080ff}
+
+        @media screen and (max-width: 900px) { #menu_wrap { display: none; } }
+
+    </style>
+
+  </head> 
+
+  <body>
+
+
+
+    <!-- 모달 -->
+    <button type="button" style="display:none" class="btn btn-primary" id="modal" data-bs-toggle="modal" data-bs-target="#exampleModal"></button>
+ 
+    <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title" id="exampleModalLabel"></h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+            <div style="display:flex">
+                <div id="img">
+                
+                </div>
+                <div>
+                    <p id="address"></p>
+                    <p id="website"></p>
+                    <p id="phone"></p>
+                    <div style="margin-left: 7px;" id="modal-radio"></div>
+                </div>
+            </div>
+            <hr>
+            <h5><b>소개글</b></h5>
+             <p id="write"></p>
+
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+
+        </div>
+        </div>
+    </div>
+    </div>
+
+
+    <div class="container-fluid">
+
+        {% comment %} 메뉴 {% endcomment %}
+        <nav class="navbar">
+            <a href="{% url 'main' %}" class="navbar-brand">
+                <div style="display: flex; height: 40px; margin-top:5px; margin-left:15px">
+                    <img  src="/static/logo.png">
+                    <img  src="/static/name.png">
+                </div>
+            </a>
+
+            <div>
+                <a href="{% url 'main' %}" class="navbar-brand">
+                    <i class="fa fa-home fa-lg" aria-hidden="true"></i>   
+                </a>
+            </div>
+        </nav>
+
+
+        {% comment %} 지역 카테고리창 {% endcomment %}
+        <div style="border: 2px solid #000; max-height: 200px; margin-top:70px; overflow-y:auto; max-width: 700px" class="container">
+            <div class="row">
+              <div class="col">
+                <div style="padding: 10px; width: 400px; display: flex;">
+                    <i style="padding-top: 10px; padding-right: 10px; color:#808080" class="fa fa-search" aria-hidden="true"></i>
+                    <input class="form-control" id="input1" type="search" value="" placeholder="지역명 입력" aria-label="Search" onKeypress="javascript:if(event.keyCode==13) {button1 = document.getElementById('button1'); button1.click();}">
+                    <button type="button" style="height:36px; width:70px; margin-left: 10px;" id="button1" class="btn btn-primary">검색</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="row" style="border-top: 1px solid rgb(95,95,95,0.3);">
+                <div class="col-2">
+                    {% for 도 in 도_광역시 %}
+                    {% if 도.번호|add:"1"|divisibleby:"2" %}
+                    <p style="cursor: pointer; margin-bottom: 10px;" class="city" value="city" id="{{ 도.이름 }}"><b>{{ 도.이름 }}</b></p>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                <div style="border-right: 1px solid rgb(95,95,95,0.3);" class="col-2">
+                    {% for 도 in 도_광역시 %}
+                    {% if 도.번호|divisibleby:"2" %}
+                    <p style="cursor: pointer; margin-bottom: 10px;" class="city" value="city" id="{{ 도.이름 }}"><b>{{ 도.이름 }}</b></p>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                <div class="col-2 geo1 geo"></div>
+                <div class="col-2 geo2 geo"></div>
+                <div class="col-2 geo3 geo"></div>
+                <div class="col-2 geo4 geo"></div>
+            </div>
+        </div>
+
+
+        {% comment %} 전체 재활 가정방문 체크박스 {% endcomment %}
+        <div id ="check_box" style="margin-left: 15px; display:none;">
+        <input style="margin-left: 20px; margin-right: 10px;" type="radio" name="chk_info" value="HTML" checked><b>전체</b>
+        <input style="margin-right: 10px;" type="radio" name="chk_info" value="CSS"><b>센터</b>
+        <input style="margin-right: 10px;" type="radio" name="chk_info" value="웹디자인"><b>가정방문</b>
+        </div>
+
+    </div>
+
+        {% comment %} 지도 및 네비 {% endcomment %}
+        <div class="map_wrap">
+            <div id="map" style="width:100%;height:100%;position:relative;overflow:hidden; margin-top: 50px;"></div>
+
+            <div id="menu_wrap" class="bg_white">
+                <div class="option">
+                    <div>
+                            <input type="text" value="" id="input2" placeholder="센터명 입력" size="25" onKeypress="javascript:if(event.keyCode==13) {button2 = document.getElementById('button2'); button2.click();}"> 
+                            <button type="button" id="button2" class="btn btn-primary">검색</button>
+                    </div>
+                </div>
+                <hr>
+                <ul id="placesList"></ul>
+            </div>
+        </div>
+
+        <p style="display: flex; justify-content: center; font-size:25px;" id="result"></p>
+     
+    
+
+
+        {% comment %} 지도 초기 설정 {% endcomment %}
+        <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=02a04e2ed99aa6a04210f2253925f429"></script>
+        <script>
+            var points = new kakao.maps.LatLng(37.65841359060776, 126.83195511980085);
+            var inforwindows = [];
+            var markers = [];
+
+            var container = document.getElementById('map');
+            var options = {
+                center: points,
+                level: 3
+            };
+    
+            var map = new kakao.maps.Map(container, options);
+
+            kakao.maps.event.addListener(map, 'rightclick', function(mouseEvent) {        
+    
+                var latlng = mouseEvent.latLng;
+                
+                var message = '<b>클릭한 위치의 위도는 ' + latlng.getLat() + ' 이고, ';
+                message += '경도는 ' + latlng.getLng() + ' 입니다</b>';
+                
+                var resultDiv = document.getElementById('result'); 
+                resultDiv.innerHTML = message;
+                
+            });
+                 
+        </script>
+
+    
+
+
+    <script>
+        //지역 검색
+
+        $(document).ready(function () {
+            $("#button1").click(function () {
+                var city_name = $("#input1").val();
+                var check = "";
+
+                if( city_name.length < 2){
+                alert('글자수가 적습니다. 검색은 두 글자 이상 가능합니다.');
+                return;
+                }
+
+                {% for 도 in 도_광역시 %}
+                check = '{{도.이름}}';
+                if (city_name.includes(check) || check.includes(city_name)) {
+                    document.getElementById(check).click();  
+                    return;
+                }
+                {% endfor %}
+
+                {% for 지 in 지역 %}
+                check = '{{지.이름}}'
+                if (city_name.includes(check) || check.includes(city_name)) {
+                    document.getElementById('{{지.도_광역시.이름}}').click();
+                    document.getElementById('{{지.이름}}').click();
+                    return;  
+                }
+                {% endfor %}
+                alert('검색 결과가 없습니다. 띄어쓰기 공백 유의');
+
+            });     
+        });
+        
+
+        //재확센터 검색
+        $(document).ready(function () {
+            $("#button2").click(function () {
+                var city_name = $("#input2").val();
+                var pl = document.getElementById('placesList');
+                var fragment = document.createDocumentFragment();
+                var write = document.getElementById('write');
+
+                if( city_name.length < 2){
+                    alert('글자수가 적습니다. 검색은 두 글자 이상 가능합니다.');
+                    return; }
+
+                    $('#placesList').html('');
+                    for(var i =0; i<inforwindows.length; i++){
+                        inforwindows[i].close(map, markers[i]);}
+        
+                    for(var i=0; i<markers.length; i++){
+                        markers[i].setMap(null);}
+
+                    var bounds = new kakao.maps.LatLngBounds();  
+                    var marker = new kakao.maps.Marker({});
+                    var iwContent = "";
+                    var el = document.createElement('li')
+                    var list = "";
+                    var index = 0;
+
+                {% for 재활 in 재활센터 %}
+                if (city_name.includes('{{재활.이름}}') || '{{재활.이름}}'.includes(city_name)) {
+    
+                    iwContent = '<div style="padding:5px; width:150px; height:auto; display:inline-block;"><b>' + '{{ 재활.이름 }}' + '</b></div>';
+                    list += '<div id="' + "{{재활.이름}}" + '" style="border-bottom:1px solid #888;" class="info"><h5><b>' + '{{ 재활.이름 }}' + '</b></h5><span class="gray">' + '{{ 재활.주소 }}' + '</span><span class="tel">전화번호 : ' + '{{ 재활.전화번호 }}'  + '</span></div>'; 
+                    
+                    // 네비에 검색 후 마우스 이벤트 등록
+                    el.onclick =  function () {
+                    $("#modal").click();
+                    $(".modal-title").html('<b>{{재활.이름}}</b>');
+                    $("#img").html('<img style="width:150px; height:150px; margin-right:15px; object-fit: contain;" src="/media/{{재활.사진}}">');
+                    $("#modal-radio").html('');
+                    $("#address").html("<b>주소 : </b>{{재활.주소}}");
+                    $("#website").html("<b>웹사이트 : </b><a href='{{재활.웹사이트}}' target='_blank'>{{재활.웹사이트}}</a>");
+                    $("#phone").html("<b>전화번호 : </b>{{재활.전화번호}}");
+
+                    if('{{재활.센터}}' == 'True')
+                    $("#modal-radio").html('<input style="margin-right: 10px;" type="radio" name="chk_info" value="CSS" checked><b>센터    </b>');
+                    if('{{재활.가정방문}}' == 'True')
+                    $("#modal-radio").append('<input style="margin-right: 10px;" type="radio" name="chk_info2" value="웹디자인" checked><b>가정방문</b>');
+                    
+                    var centerInfo = `{{재활.정보}}`.replaceAll("\n", "<br>");
+                        write.innerHTML = centerInfo;
+                    };
+
+                    points = new kakao.maps.LatLng('{{재활.위도}}', '{{재활.경도}}');
+                    marker = new kakao.maps.Marker({
+                        map: map,
+                        position: points,
+                        title : '{{재활.이름}}',
+                    });
+
+                    kakao.maps.event.addListener(marker, 'click', function() {
+                        $("#modal").click();
+                        $("#modal-radio").html('');
+                        $(".modal-title").html('<b>{{재활.이름}}</b>');
+                        $("#img").html('<img style="width:150px; height:150px; margin-right:15px; object-fit: contain;" src="/media/{{재활.사진}}">');
+                        $("#address").html("<b>주소 : </b>{{재활.주소}}");
+                        $("#website").html("<b>웹사이트 : </b><a href='{{재활.웹사이트}}' target='_blank'>{{재활.웹사이트}}</a>");
+                        $("#phone").html("<b>전화번호 : </b>{{재활.전화번호}}");
+
+                        if('{{재활.센터}}' == 'True'){
+                        $("#modal-radio").html('<input style="margin-right: 10px;" type="radio" name="chk_info" value="CSS" checked><b>센터    </b>');}
+                        if('{{재활.가정방문}}' == 'True'){
+                        $("#modal-radio").append('<input style="margin-right: 10px;" type="radio" name="chk_info2" value="웹디자인" checked><b>가정방문</b>');}
+                        var centerInfo = `{{재활.정보}}`.replaceAll("\n", "<br>");
+                        write.innerHTML = centerInfo;      
+                    
+                    });
+                    markers[index] = marker;
+                    bounds.extend(points);
+                    var infowindow = new kakao.maps.InfoWindow({
+                        position : points, 
+                        content : iwContent 
+                    });
+                    inforwindows[index] = infowindow;
+                    index++;
+                    
+                }
+                {% endfor %}
+                if(index == 0){
+                alert('검색 결과가 없습니다. 띄어쓰기 공백 유의');
+                return;
+                }
+
+                el.innerHTML = list;
+                fragment.appendChild(el); 
+
+                for(var i =0; i<inforwindows.length; i++){
+                    inforwindows[i].open(map, markers[i]);}
+
+                pl.appendChild(fragment);;
+                map.setBounds(bounds);
+
+
+            });     
+        });
+
+        //도시 클릭 후 지역 라디오버튼 활성화
+        $(document).ready(function () {
+            $("p[value='city']").click(function () {
+                var city_name = $(this).attr('id');
+                $('.city').css('color','#000');
+                $('#' + city_name).css('color','#0080ff');
+                $('.geo1').html('');
+                $('.geo2').html('');
+                $('.geo3').html('');
+                $('.geo4').html('');
+                var tag1 = ""
+                var tag2 = ""
+                var tag3 = ""
+                var tag4 = ""
+                var index = 0
+                {% for 지 in 지역 %}
+                    if (city_name == '{{지.도_광역시.이름}}') {
+                        index++;
+                        if(index % 4 == 1){
+                        tag1 += "<div value='city2' class='form-check'><input class='form-check-input' type='checkbox' id='" + '{{지.이름}}' + "'><label class='form-check-label' for='" + '{{지.이름}}' + "'>" + '{{지.이름}}' + "</label></div>"}
+                        else if(index % 4 == 2){
+                        tag2 += "<div value='city2' class='form-check'><input class='form-check-input' type='checkbox' id='" + '{{지.이름}}' + "'><label class='form-check-label' for='" + '{{지.이름}}' + "'>" + '{{지.이름}}' + "</label></div>"}
+                        else if(index % 4 == 3){
+                        tag3 += "<div value='city2' class='form-check'><input class='form-check-input' type='checkbox' id='" + '{{지.이름}}' + "'><label class='form-check-label' for='" + '{{지.이름}}' + "'>" + '{{지.이름}}' + "</label></div>"}
+                        else if(index % 4 == 0){
+                        tag4 += "<div value='city2' class='form-check'><input class='form-check-input' type='checkbox' id='" + '{{지.이름}}' + "'><label class='form-check-label' for='" + '{{지.이름}}' + "'>" + '{{지.이름}}' + "</label></div>"}
+                    }
+                {% endfor %}
+                if(tag1 != null){
+                $('.geo1').append(tag1);
+                }
+                if(tag2 != null){
+                $('.geo2').append(tag2);
+                }
+                if(tag3 != null){
+                $('.geo3').append(tag3);
+                }
+                if(tag4 != null){
+                $('.geo4').append(tag4);
+                }
+        
+            });     
+        });
+
+
+        //라디오 버튼 클릭 후 map 변경
+        $(document).ready(function () {
+            $('.geo').click(function (chk) {
+            $('#placesList').html('');
+            //$('#check_box').css('display','block');
+            var checkboxes = document.getElementsByClassName("form-check-input");
+            var city_region = chk.target.id;   
+            for(var i=0; i<checkboxes.length; i++){
+                if(checkboxes[i].id != city_region){    
+                    checkboxes[i].checked = false;
+                }
+                else
+                { checkboxes[i].checked = true }
+            }
+
+            for(var i =0; i<inforwindows.length; i++){
+                inforwindows[i].close(map, markers[i]);}
+
+            for(var i=0; i<markers.length; i++){
+                markers[i].setMap(null);}
+
+            var a = 0;
+            var bounds = new kakao.maps.LatLngBounds();  
+            var iwContent = '';
+            var list = '';
+            var infowindow = new kakao.maps.InfoWindow({ position : null, content : null });
+            var marker = new kakao.maps.Marker({});
+            var pl = document.getElementById('placesList');
+            var write = document.getElementById('write');
+            var fragment = document.createDocumentFragment();
+            
+            {% for 재활 in 재활센터 %}
+                    if (city_region == '{{재활.지역.이름}}') {
+                        iwContent = '<div style="border-radius:6px; padding:5px; width:150px; height:auto; display:inline-block;"><b>' + '{{ 재활.이름 }}' + '</b></div>';
+                        var el = document.createElement('li')
+                        list = '<div id="' + "{{재활.이름}}" + '" style="border-bottom:1px solid #888;" class="info"><h5><b>' + '{{ 재활.이름 }}' + '</b></h5><span class="gray">' + '{{ 재활.주소 }}' + '</span><span class="tel">전화번호 : ' + '{{ 재활.전화번호 }}'  + '</span></div>';
+                        el.innerHTML = list;
+                        fragment.appendChild(el);
+                        points = new kakao.maps.LatLng('{{재활.위도}}', '{{재활.경도}}');
+                        marker = new kakao.maps.Marker({
+                            map: map,
+                            position: points,
+                            title : '{{재활.이름}}',
+                        });
+
+
+                        // 마커에 마우스 이벤트 등록
+                        kakao.maps.event.addListener(marker, 'click', function() {
+                        $("#modal").click();
+                        $("#modal-radio").html('');
+                        $(".modal-title").html('<b>{{재활.이름}}</b>');
+                        $("#img").html('<img style="width:150px; height:150px; margin-right:15px; object-fit: contain;" src="/media/{{재활.사진}}">');
+                        $("#address").html("<b>주소 : </b>{{재활.주소}}");
+                        $("#website").html("<b>웹사이트 : </b><a href='{{재활.웹사이트}}' target='_blank'>{{재활.웹사이트}}</a>");
+                        $("#phone").html("<b>전화번호 : </b>{{재활.전화번호}}");
+
+                        if('{{재활.센터}}' == 'True'){
+                        $("#modal-radio").html('<input style="margin-right: 10px;" type="radio" name="chk_info" value="CSS" checked><b>센터    </b>');}
+                        if('{{재활.가정방문}}' == 'True'){
+                        $("#modal-radio").append('<input style="margin-right: 10px;" type="radio" name="chk_info2" value="웹디자인" checked><b>가정방문</b>');}
+                        var centerInfo = `{{재활.정보}}`.replaceAll("\n", "<br>");
+                        write.innerHTML = centerInfo;      
+                    
+                    });
+
+                    
+                        // 네비에 마우스 이벤트 등록
+                        el.onclick =  function () {
+                        $("#modal").click();
+                        $("#modal-radio").html('');
+                        $(".modal-title").html('<b>{{재활.이름}}</b>');
+                        $("#img").html('<img style="width:150px; height:150px; margin-right:15px; object-fit: contain;" src="/media/{{재활.사진}}">');
+                        $("#address").html("<b>주소 : </b>{{재활.주소}}");
+                        $("#website").html("<b>웹사이트 : </b><a href='{{재활.웹사이트}}' target='_blank'>{{재활.웹사이트}}</a>");
+                        $("#phone").html("<b>전화번호 : </b>{{재활.전화번호}}");
+
+                        if('{{재활.센터}}' == 'True'){
+                        $("#modal-radio").html('<input style="margin-right: 10px;" type="radio" name="chk_info" value="CSS" checked><b>센터    </b>');}
+                        if('{{재활.가정방문}}' == 'True'){
+                        $("#modal-radio").append('<input style="margin-right: 10px;" type="radio" name="chk_info2" value="웹디자인" checked><b>가정방문</b>');}
+
+                        var centerInfo = `{{재활.정보}}`.replaceAll("\n", "<br>");
+                        write.innerHTML = centerInfo;
+                
+
+                        };
+
+
+                        markers[a] = marker;
+                        bounds.extend(points);
+                        infowindow = new kakao.maps.InfoWindow({
+                            position : points, 
+                            content : iwContent 
+                        });
+                        inforwindows[a] = infowindow;
+                        a++;
+                        
+                    }
+
+            {% endfor %}
+
+            
+
+            if(a == 0)
+            return;
+
+            for(var i =0; i<inforwindows.length; i++){
+                inforwindows[i].open(map, markers[i]);}
+
+            pl.appendChild(fragment);;
+            map.setBounds(bounds);
+            });     
+        });
+
+    </script>
+
+
+    {% comment %} 값 받기 {% endcomment %}
+    <script language = "javascript">
+        window.onload = function() {
+        temp = location.href.split("?");
+        var data = decodeURI(temp[1]);
+        if(data != undefined){
+            {% for 지 in 지역 %}
+            if(data == '{{지.이름}}'){
+            document.getElementById('{{지.도_광역시.이름}}').click();
+            document.getElementById('{{지.이름}}').click();
+            }
+            {% endfor %}
+        }
+    };
+          
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
+
+  </body>
+
+</html>
